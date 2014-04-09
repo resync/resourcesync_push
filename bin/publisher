@@ -1,0 +1,4 @@
+#TODO: needs installation and setup scripts for the module to work
+
+#!/bin/sh
+uwsgi --http :9000 --enable-threads --wsgi-file resync_push/publisher/publisher.py --pp /Library/Python/2.7/site-packages/

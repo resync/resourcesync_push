@@ -1,0 +1,43 @@
+[general]
+
+log_mode=demo
+
+[hub]
+url=http://localhost:8000/
+
+# full path to the subscriber list pickle file.
+# default: path to rspush library + db/subscribers.pk
+# to change the default, uncomment the line below and provide a full path
+# to the appropriate file.
+# This is a pickle binary file and not editable directly by a user.
+# subscribers_file=<path to this library>/db/subscribers.pk
+
+# add multiple values separated by a ,
+# leave the value as blank to accept *any* value
+mimetypes=application/xml,application/json
+
+# add multiple values separated by a ,
+# leave the value as blank to accept *any* value
+trusted_publishers=
+
+# add multiple values separated by a ,
+# leave the value as blank to accept *any* value
+trusted_topics=
+
+[publisher]
+
+url=http://localhost:9000
+
+# the hub url to publish the notifications to
+hub_url=http://localhost:8000/publish
+
+# the topic url of the notification.
+# see resourcesync spec for more details
+topic_url=http://localhost:9000/resync/topic/test
+
+
+[subscriber]
+
+url=http://localhost:10000
+
+[demo_mode]
