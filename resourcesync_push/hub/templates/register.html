@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Registration Form - ResourceSync Hub</title>
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+        <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+        <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+        <style>
+            body { font-size: 1.1em; margin-left: 100px;}
+            label, input { display:block; }
+            input.text { margin-bottom:12px; padding: .4em; }
+            fieldset { padding:0; border:0; margin-top:25px; }
+            h1 { font-size: 1.2em; margin: .6em 0; }
+            .ui-dialog .ui-state-error { padding: .3em; }
+            .validateTips { border: 1px solid transparent; padding: 0.3em; }
+            .valid { color: #146D03; font-size: 0.9em; font-weight: bold; padding: 5px;}
+            .error { color: #cd0a0a; font-size: 0.9em; font-weight: bold; padding: 5px;}
+        </style>
+        <script>
+
+            function validatePayload(displayResults) {
+
+                results = "<h3>Validator Results</h3>";
+                valid = true;
+
+                payload = $("#sample_payload").val().trim();
+                if (!payload) {
+                    $("#messages").append("<div class='error'>The payload field cannot be empty.</div>");
+                    return false;
+                }
+                x = "";
+                try {
+                    x = $.parseXML(payload);
+                }
+                catch (e) {
+                    $("#messages").append("<div class='error'>Invalid XML.</div>");
+                    return false;
+                }
+                x = $(x);
+
+                // urlset
+                if (x.find('urlset').length > 0) {
+                    results += "<li class='valid'>The tag &lt;urlset&gt; is present.</li>";
+                }
+                else {
+                    results += "<li class='error'>The tag &lt;urlset&gt; was not found.</li>";
+                    valid = false;
+                }
+
+                // sitemap ns
+                if (x.find('urlset').attr('xmlns') == "http://www.sitemaps.org/schemas/sitemap/0.9") {
+                    results += "<li class='valid'>The sitemap XML namespace prefix is declared.</li>";
+                }
+                else {
+                    results += "<li class='error'>The sitemap XML namespace prefix is not declared.</li>";
+                    valid = false;
+                }
+
+                // resourcesync ns
+                if (x.find('urlset').attr('xmlns:rs') == "http://www.openarchives.org/rs/terms/") {
+                    results += "<li class='valid'>The ResourceSync XML namespace prefix is declared.</li>";
+                }
+                else {
+                    results += "<li class='error'>The ResourceSync XML namespace prefix is not declared.</li>";
+                    valid = false;
+                }
+
+                //rs:md
+                capability = false;
+                change = false
+                for (i=0; i<x.find('md').length; i++) {
+                    if ($(x.find('md')[i]).attr('capability') == "changelist") {
+                        results += "<li class='valid'>The tag &lt;:md&gt; provides 'changelist' as the value for the attribute 'capability'.</li>";
+                        capability = true;
+                    }
+                    if (['updated', 'created', 'deleted'].indexOf($(x.find('md')[i]).attr('change')) >= 0) {
+                        results += "<li class='valid'>The tag &lt;:md&gt; provides the value for 'change' attribute.</li>";
+                        change = true;
+                    }
+                }
+                if (!capability) {
+                    results += "<li class='error'>The tag &lt;:md&gt; does not provide 'changelist' as the value for the attribute 'capability'.</li>";
+                    valid = false;
+                }
+                if (!change) {
+                    results += "<li class='valid'>The tag &lt;:md&gt; does not provide the appropriate value for 'change' attribute.</li>";
+                    valid = false;
+                }
+
+                // loc
+                if (x.find('loc').text().trim() != "") {
+                    results += "<li class='valid'>&lt;loc&gt; present with the resource URL.</li>";
+                }
+                else {
+                    results += "<li class='error'>The tag &lt;loc&gt; was not found.</li>";
+                    valid = false;
+                }
+
+                // lastmod
+                if (x.find('lastmod').text().trim() != "") {
+                    results += "<li class='valid'>&lt;lastmod&gt; present.</li>";
+                }
+                else {
+                    results += "<li class='error'>The tag &lt;lastmod&gt; was not found.</li>";
+                    valid = false;
+                }
+
+                if (displayResults) {
+                    $("#messages").append("<ul>" + results + "</ul>")
+                }
+
+                console.log(valid);
+                return valid;
+            }
+
+            function validate() {
+                topic_url = $("#topic_url").val().trim();
+                console.log(topic_url)
+                if (!topic_url || !validatePayload(false)) {
+                    return false;
+                }
+                return true;
+            }
+
+            function v() {
+                r = validate();
+                if (!r) {
+                    $("#messages").empty()
+                    $("#messages").append("<div class='error'>Topic URL and Payload cannot be empty. Payload will have to be validated successfully before registering.</div>")
+                }
+                return r
+            }
+            
+            $( function() {
+                $("#submit").button();
+                $("#validate").button()
+                .click( function(event) {
+                    event.preventDefault();
+                    $("#messages").empty();
+                    validatePayload(true);
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div id="form" title="Register">
+            <p class="validateTips">All form fields are required.</p>
+            <form method="post" action="registersuccess" onsubmit="return v();">
+                <fieldset>
+                    <label for="topic_url">Topic URL</label>
+                    <input type="text" name="topic_url" id="topic_url" size="104" class="text ui-widget-content ui-corner-all">
+                    <label for="sample_payload">Sample Notification Payload</label>
+                    <textarea rows="10" cols="75" name="sample_payload" id="sample_payload" class="text ui-widget-content ui-corner-all"></textarea>
+                </fieldset>
+                <table>
+                    <tr>
+                        <td>
+                            <button id="validate" name="validate">Validate Payload</button>
+                        </td>
+                        <td>
+                            <input type="submit" id="submit" name="submit" value="Register" />
+                        </td>
+                    </tr>
+                </table>
+            </form>
+            <div id="messages" class='ui-state-highlight ui-corner-all' style='margin-top: 15px; width: 550px;'></div>
+        </div>
+    </body>
+</html>

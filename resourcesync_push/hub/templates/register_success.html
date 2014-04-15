@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Registration Form - ResourceSync Hub</title>
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+        <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+        <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+        <style>
+            body {{ font-size: 1.1em; margin-left: 100px;}}
+            label, input {{ display:block; }}
+            input.text {{ margin-bottom:12px; padding: .4em; }}
+            fieldset {{ padding:0; border:0; margin-top:25px; }}
+            h1 {{ font-size: 1.2em; margin: .6em 0; }}
+            .ui-dialog .ui-state-error {{ padding: .3em; }}
+        .validateTips {{ border: 1px solid transparent; padding: 0.3em; }}
+    #submit {{ margin-left: 200px; }}
+        </style>
+    </head>
+    <body>
+        <div id="messages" class='ui-state-highlight ui-corner-all' style='margin-top: 15px; width: 550px;'>
+            Registration Successful.
+            <ul>
+                <li>Topic URL: {topic_url}</li>
+                <li>Publish notifications to the URL: {hub_url}</li>
+            </ul>
+        </div>
+    </body>
+</html>

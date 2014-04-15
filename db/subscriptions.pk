@@ -1,8 +1,12 @@
 (dp1
-S'http://localhost:9000/resync/topic/test'
-p2
-(dp3
-S'http://localhost:10000'
+N(dp2
+S'http://localhost'
+p3
+F1400261760.09108
+ssS'http://localhost:9000/resync/topic/test'
 p4
+(dp5
+S'http://localhost:10000'
+p6
 F1399664370.0424149
 ss.

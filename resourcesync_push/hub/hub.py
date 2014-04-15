@@ -1,16 +1,25 @@
-from resync_push import ResyncPush
+"""
+The Hub resource.
+"""
+
+from resourcesync_push import ResourceSyncPuSH
 
 import time
 import cPickle
 import copy
 import urlparse
 import urllib
+import os
 
 
-class Hub(ResyncPush):
+class Hub(ResourceSyncPuSH):
+    """
+    The base class for hub resources.
+    """
 
     def __init__(self):
-        ResyncPush.__init__(self, "hub")
+        ResourceSyncPuSH.__init__(self)
+        self.get_config("hub")
 
     def save_subscriptions(self, subscriptions):
         'Save subscribers to disk as a dict'
@@ -19,17 +28,17 @@ class Hub(ResyncPush):
 
         print("saving" + filename)
         subscriptions = self.verify_lease(subscriptions)
-        f = None
+        sub_file = None
         try:
-            f = open(filename, 'wb')
-            cPickle.dump(subscriptions, f)
+            sub_file = open(filename, 'wb')
+            cPickle.dump(subscriptions, sub_file)
             print("saved subs to %s" % filename)
             print(subscriptions)
-        except Exception, e:
-            print(e)
+        except IOError as err:
+            print(err)
         finally:
-            if f:
-                f.close()
+            if sub_file:
+                sub_file.close()
 
     def read_subscriptions(self):
         "Read subscriber's list from file"
@@ -37,17 +46,17 @@ class Hub(ResyncPush):
         filename = self.subscribers_file
 
         data = {}
-        f = None
+        sub_file = None
         try:
             # using 'r+b' file permissions here so that the
             # file gets created if there is none.
-            f = open(filename, "r+b")
-            data = cPickle.load(f)
-        except Exception, e:
-            print(e)
+            sub_file = open(filename, "r+b")
+            data = cPickle.load(sub_file)
+        except IOError as err:
+            print(err)
         finally:
-            if f:
-                f.close()
+            if sub_file:
+                sub_file.close()
         return self.verify_lease(data)
 
     def verify_lease(self, subscriptions):
@@ -57,16 +66,21 @@ class Hub(ResyncPush):
         """
 
         current_time = time.time()
-        s = copy.deepcopy(subscriptions)
+        subs = copy.deepcopy(subscriptions)
         for topic in list(subscriptions):
             for subscriber in subscriptions[topic]:
                 if subscriptions[topic][subscriber] <= current_time:
-                    del s[topic][subscriber]
-        return s
+                    del subs[topic][subscriber]
+        return subs
 
-    def baseN(self, num, b, numerals="0123456789abcdefghijklmnopqrstuvwxyz"):
+    def base_n(self, num, bits,
+               numerals="0123456789abcdefghijklmnopqrstuvwxyz"):
+        """
+        Creates a unique hash for subscription verification.
+        """
+
         return ((num == 0) and "0") or \
-            (self.baseN(num // b, b).lstrip("0") + numerals[num % b])
+            (self.base_n(num // bits, bits).lstrip("0") + numerals[num % bits])
 
 
 class HubPublisher(Hub):
@@ -79,15 +93,20 @@ class HubPublisher(Hub):
         Hub.__init__(self)
         self._env = env
         self._start_response = start_response
+        self.push_url = ""
 
     def handle_push_request(self):
-        # original PuSH spec mode
+        """
+        Original PuSH spec mode. Fetches the resource in the hub.url param
+        and starts the broadcast of the data to the subscribers asynchronously.
+        """
+
         query_st = self._env['wsgi.input'].read()
         query = urlparse.parse_qs(query_st)
         mode = query.get('hub.mode', [None])[0]
         self.push_url = query.get('hub.url', [None])[0]
 
-        if not mode and not self.push_url:
+        if not mode or not self.push_url:
             return self.respond(code=400,
                                 msg="Bad Request: \
                                 hub.url and hub.mode required.")
@@ -104,10 +123,15 @@ class HubPublisher(Hub):
                 return self.respond(code=400,
                                     msg="Error retrieving resource url:\
                                     %s" % self.push_url)
-        else:
-            return self.respond(code=400, msg="Unrecognised mode")
+
+        return self.respond(code=400, msg="Unrecognised mode")
 
     def publish_push_payload(self, future_session, response):
+        """
+        The async callback method for the PuSH payload. Broadcasts the
+        payload to the subscribers.
+        """
+
         subscriptions = self.read_subscriptions()
         subscribers = subscriptions.get(self.push_url, None)
         if not subscribers:
@@ -124,14 +148,18 @@ class HubPublisher(Hub):
 
         return
 
-    def handle_resync_request(self, content_type="application/xml"):
+    def handle_resourcesync_request(self, content_type="application/xml"):
+        """
+        ResourceSync payload. Gets the topic and hub url from the link
+        header and broadcasts to the subscribers.
+        """
 
         payload = None
         try:
             payload = self._env['wsgi.input'].read()
-        except Exception as e:
-            print(e)
-            return self.respond(code=400, msg="Payload of size > 0 expected.")
+        except Exception as err:
+            print(err)
+            #return self.respond(code=400, msg="Payload of size > 0 expected.")
         if not payload:
             return self.respond(code=400, msg="Payload of size > 0 expected.")
 
@@ -140,7 +168,7 @@ class HubPublisher(Hub):
             return self.respond(code=400,
                                 msg="ResourceSync Link Headers required.")
 
-        topic, hub_url = self.get_topic_hub_url(link_header)
+        topic, hub_url = ResourceSyncPuSH.get_topic_hub_url(link_header)
         if not topic and not hub_url:
             return self.respond(code=400,
                                 msg="ResourceSync Link header spec not met.")
@@ -165,8 +193,13 @@ class HubPublisher(Hub):
         return self.respond(code=204)
 
     def handle(self):
+        """
+        Determines if the request is a PuSH or a ResourceSync request based
+        on content-type header and processes appropriately.
+        """
+
         if not self._env.get('REQUEST_METHOD', None) == 'POST':
-            return self.respond(code=403, msg='Method Not Allowed.')
+            return self.respond(code=405, msg='Method Not Allowed.')
 
         content_type = self._env.get('CONTENT_TYPE', None).lower()
         if not content_type:
@@ -176,14 +209,17 @@ class HubPublisher(Hub):
         if content_type == "application/x-www-form-urlencoded":
             return self.handle_push_request()
         elif not self.mimetypes or content_type in self.mimetypes:
-            return self.handle_resync_request(content_type=content_type)
+            return self.handle_resourcesync_request(content_type=content_type)
 
         # error
-        return self.respond(code=403,
+        return self.respond(code=406,
                             msg="content-type header not recognised.")
 
 
 class HubSubscriber(Hub):
+    """
+    Listens for and processes subscription requests.
+    """
 
     def __init__(self, env, start_response):
         Hub.__init__(self)
@@ -193,7 +229,7 @@ class HubSubscriber(Hub):
     def update_subscriber(self, topic, subscriber_url, lease,
                           mode="subscribe"):
         """
-        Given the topic, subscriber url and lease time, this function
+        Given the topic, subscriber url and lease time, this method
         adds a new subscriber and saves it.
         """
 
@@ -220,10 +256,10 @@ class HubSubscriber(Hub):
         """
         Handles Subscriptions. Checks the request, sends a challenge to
         the subscriber and verifies if the client relays the challenge back.
-        Handles both subscriptions and unsubscriptions.
+        Handles both subscription and unsubscription requests.
         """
 
-        challenge = self.baseN(abs(hash(time.time())), 36)
+        challenge = self.base_n(abs(hash(time.time())), 36)
         verify_token = to_verify.get('verify_token', None)
         payload = {
             'hub.mode': to_verify['mode'],
@@ -237,8 +273,8 @@ class HubSubscriber(Hub):
         url = '?'.join([to_verify['callback'], urllib.urlencode(payload)])
 
         try:
-            fut = self.send(url, method='GET')
-            response = fut.result()
+            future = self.send(url, method='GET')
+            response = future.result()
             payload = response.content
 
             if challenge in payload:
@@ -264,6 +300,13 @@ class HubSubscriber(Hub):
         return self.respond(code=204, msg="Subscription successful.")
 
     def handle(self):
+        """
+        Verifies if the subscription request is valid and handles it
+        appropriately.
+        """
+
+        if not self._env.get('REQUEST_METHOD', None) == 'POST':
+            return self.respond(code=405, msg='Method Not Allowed.')
 
         query_st = self._env['wsgi.input'].read()
         args = urlparse.parse_qs(query_st)
@@ -282,7 +325,6 @@ class HubSubscriber(Hub):
         if not mode in ['subscribe', 'unsubscribe']:
             return self.respond(code=400, msg="Bad request: Unrecognized mode")
 
-        # For now, only using the first preference of verify mode
         verify = verify[0]
         if not verify in ['sync', 'async']:
             return self.respond(code=400,
@@ -299,29 +341,116 @@ class HubSubscriber(Hub):
         return self.subscribe(to_verify)
 
 
-class HubForm(Hub):
+class HubRegister(Hub):
+    """
+    A HTML form for publishers to register at the hub. Expects a topic
+    url and a valid xml payload. The xml payload is verified by javascript.
+    Accepts only resourcesync payload.
+    """
+
     def __init__(self, env, start_response):
         Hub.__init__(self)
         self._env = env
         self._start_response = start_response
 
     def handle(self):
-        self._start_response("200 OK", [('Content-Type', 'text/html')])
-        return ["form"]
+        """
+        Renders the form template.
+        """
+
+        if self._env.get('REQUEST_METHOD') not in ['GET', 'HEAD']:
+            return self.respond(code=405, msg="Method not supported.")
+
+        if self._env.get('REQUEST_METHOD') == 'HEAD':
+            return self.respond()
+
+        try:
+            with open(os.path.join(os.path.dirname(__file__),
+                                   "templates/register.html"), "r") \
+                    as templ_file:
+                template = templ_file.read()
+                self._start_response("200 OK", [('Content-Type', 'text/html')])
+                return [template]
+        except IOError:
+            return self.respond(code=500, msg="Unexpected server error")
+
+
+class HubRegisterSuccess(Hub):
+    """
+    Displays the registration success page.
+    """
+
+    def __init__(self, env, start_response):
+        Hub.__init__(self)
+        self._env = env
+        self._start_response = start_response
+
+    def handle(self):
+        """
+        Renders the success template.
+        """
+
+        if self._env.get('REQUEST_METHOD') not in ['POST', 'HEAD']:
+            return self.respond(code=405, msg="Method not supported.")
+
+        if self._env.get('REQUEST_METHOD') == 'HEAD':
+            return self.respond()
+
+        topic_url = ""
+        if self._env.get('REQUEST_METHOD') == 'POST' and \
+                self._env.get('CONTENT_TYPE') == \
+                "application/x-www-form-urlencoded":
+
+            query_st = self._env['wsgi.input'].read()
+            args = urlparse.parse_qs(query_st)
+            topic_url = args.get('topic_url')[0]
+
+        if not topic_url:
+            return self.respond(code=400, msg="Bad Request")
+        try:
+            with open(os.path.join(os.path.dirname(__file__),
+                                   "templates/register_success.html"), "r") \
+                    as templ_file:
+                template = templ_file.read()
+                var = {'topic_url': topic_url,
+                       'hub_url': self.my_url + "/publish"
+                       }
+                template = template.format(**var)
+                self._start_response("200 OK", [('Content-Type', 'text/html')])
+                return [template]
+        except IOError as err:
+            return self.respond(code=500,
+                                msg="Unexpected server error: %s" % err)
 
 
 def application(env, start_response):
+    """
+    WSGI entry point to the hub.
+    """
+    hub = Hub(env, start_response)
+    urlparse.urlparse(hub.server_path)
+
     req_path = env.get('PATH_INFO', "/")
 
+    # replace server path
+    if hub.server_path:
+        req_path = req_path.replace(hub.server_path, "")
+
+    if not req_path.startswith("/"):
+        req_path = "/" + req_path
+
     if req_path == "/publish":
-        p = HubPublisher(env, start_response)
-        return p.handle()
+        publisher = HubPublisher(env, start_response)
+        return publisher.handle()
     elif req_path == "/subscribe":
-        s = HubSubscriber(env, start_response)
-        return s.handle()
-    elif req_path == "/":
-        h = HubForm(env, start_response)
-        return h.handle()
+        subscriber = HubSubscriber(env, start_response)
+        return subscriber.handle()
+    elif req_path == "/register":
+        hubregister = HubRegister(env, start_response)
+        return hubregister.handle()
+    elif req_path == "/registersuccess":
+        hubregistersuccess = HubRegisterSuccess(env, start_response)
+        return hubregistersuccess.handle()
     else:
         start_response("404 Not Found", [('Content-Type', 'text/html')])
         return ["Requested resource not found."]

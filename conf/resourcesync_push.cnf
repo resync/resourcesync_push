@@ -33,8 +33,12 @@ hub_url=http://localhost:8000/publish
 
 # the topic url of the notification.
 # see resourcesync spec for more details
-topic_url=http://localhost:9000/resync/topic/test
+topic_url=http://localhost:8090/resourcesync/topic/test
 
+
+# set server_path to the value of the path if different from 
+# '/' in a reverse proxy setup.
+# server_path=/resourcesync
 
 [subscriber]
 

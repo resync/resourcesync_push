@@ -1,0 +1,8 @@
+recursive-include doc/html *
+prune doc/html/.doctrees/
+exclude doc/html/.buildinfo
+include LICENSE.txt
+
+recursive-include conf *
+recursive-include db *
+recursive-include resync_push/hub/templates *
