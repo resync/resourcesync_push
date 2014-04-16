@@ -14,4 +14,4 @@ The [ResourceSync specification](http://www.openarchives.org/rs/0.9.1/resourcesy
 * Publisher has REST API support.
 - Existing sources can easily publish change notification to the hub by sending a POST request to the publisher.
 
-
+TBD...
