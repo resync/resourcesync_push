@@ -8,10 +8,12 @@ ResourceSync Push is a Hub, Publisher, Source implementation of ResourceSync wri
 The [ResourceSync specification](http://www.openarchives.org/rs/0.9.1/resourcesync) describes a synchronization framework for the web consisting of various capabilities that allow third party systems to remain synchronized with a server's evolving resources. This library is an implementation of the ResourceSync [Change Notification](http://www.openarchives.org/rs/notification/0.9/notification#ChangeNoti) and uses the [PubSubHubbub](https://pubsubhubbub.googlecode.com/git/pubsubhubbub-core-0.4.html) protocol.
 
 ## Features
-* Scalable, fast and easily installable Publisher, Hub and Subscriber with minimal configuration required.
-* Fully compliant implementation of the ResourceSync Change Notification specification.
-* The Hub fully supports regular PubSubHubbub requests.
-* Publisher has REST API support.
-- Existing sources can easily publish change notification to the hub by sending a POST request to the publisher.
+* Scalable, fast and easily installable Publisher, Hub and Subscriber.
+* Fully compliant implementation of the ResourceSync Change Notification spec.
+* The Hub is also compliant with the PubSubHubbub spec and can be used as a simple pubsub hub.
+* ResourceSync Push can be used in any existing system and is programming language independent; uses HTTP POST throughout.
 
-TBD...
+
+## Getting Started
+
+Read the [documentation](https://github.com/hariharshankar/resourcesync_push/wiki) to get started.
