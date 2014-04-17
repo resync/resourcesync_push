@@ -1,5 +1,0 @@
-#TODO: needs installation and setup scripts for the module to work
-#!/bin/sh
-
-# bin/uwsgi --http :8000 --enable-threads --module resync_push.hub.hub --callable application
-uwsgi --http :8000 --enable-threads --wsgi-file resync_push/hub/hub.py --pp /Library/Python/2.7/site-packages/

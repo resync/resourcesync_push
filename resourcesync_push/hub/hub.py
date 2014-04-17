@@ -1,6 +1,4 @@
-"""
-The Hub resource.
-"""
+"""The Hub resource."""
 
 from resourcesync_push import ResourceSyncPuSH
 
@@ -24,16 +22,13 @@ class Hub(ResourceSyncPuSH):
     def save_subscriptions(self, subscriptions):
         'Save subscribers to disk as a dict'
 
-        filename = self.subscribers_file
+        filename = self.config['subscribers_file']
 
-        print("saving" + filename)
         subscriptions = self.verify_lease(subscriptions)
         sub_file = None
         try:
             sub_file = open(filename, 'wb')
             cPickle.dump(subscriptions, sub_file)
-            print("saved subs to %s" % filename)
-            print(subscriptions)
         except IOError as err:
             print(err)
         finally:
@@ -43,7 +38,7 @@ class Hub(ResourceSyncPuSH):
     def read_subscriptions(self):
         "Read subscriber's list from file"
 
-        filename = self.subscribers_file
+        filename = self.config['subscribers_file']
 
         data = {}
         sub_file = None
@@ -77,6 +72,8 @@ class Hub(ResourceSyncPuSH):
                numerals="0123456789abcdefghijklmnopqrstuvwxyz"):
         """
         Creates a unique hash for subscription verification.
+        Taken from: https://github.com/progrium/wolverine/blob/master/\
+            miyamoto/pubsub.py
         """
 
         return ((num == 0) and "0") or \
@@ -154,12 +151,7 @@ class HubPublisher(Hub):
         header and broadcasts to the subscribers.
         """
 
-        payload = None
-        try:
-            payload = self._env['wsgi.input'].read()
-        except Exception as err:
-            print(err)
-            #return self.respond(code=400, msg="Payload of size > 0 expected.")
+        payload = self._env['wsgi.input'].read()
         if not payload:
             return self.respond(code=400, msg="Payload of size > 0 expected.")
 
@@ -172,7 +164,8 @@ class HubPublisher(Hub):
         if not topic and not hub_url:
             return self.respond(code=400,
                                 msg="ResourceSync Link header spec not met.")
-        if self.trusted_topics and topic.strip() not in self.trusted_topics:
+        if self.config['trusted_topics'] and \
+                topic.strip() not in self.config['trusted_topics']:
             return self.respond(code=403,
                                 msg="Topic is not registered with the hub.")
 
@@ -186,6 +179,15 @@ class HubPublisher(Hub):
             'Link': link_header,
             'Content-Length': str(len(payload))
         }
+
+        self.log_msg['msg'].append("Posting change notification to %s \
+                                   subscriber(s)" % len(subscribers))
+        self.log_msg['msg'].append("ResourceSync Payload size: %s" %
+                                   str(len(payload)))
+        self.log_msg['link_header'] = link_header
+
+        self.log()
+
         for subscriber in subscribers:
             self.send(subscriber, data=payload, headers=headers)
 
@@ -208,7 +210,8 @@ class HubPublisher(Hub):
 
         if content_type == "application/x-www-form-urlencoded":
             return self.handle_push_request()
-        elif not self.mimetypes or content_type in self.mimetypes:
+        elif not self.config['mimetypes'] or \
+                content_type in self.config['mimetypes']:
             return self.handle_resourcesync_request(content_type=content_type)
 
         # error
@@ -413,7 +416,7 @@ class HubRegisterSuccess(Hub):
                     as templ_file:
                 template = templ_file.read()
                 var = {'topic_url': topic_url,
-                       'hub_url': self.my_url + "/publish"
+                       'hub_url': self.config['my_url'] + "/publish"
                        }
                 template = template.format(**var)
                 self._start_response("200 OK", [('Content-Type', 'text/html')])
@@ -427,14 +430,14 @@ def application(env, start_response):
     """
     WSGI entry point to the hub.
     """
-    hub = Hub(env, start_response)
-    urlparse.urlparse(hub.server_path)
+    hub = Hub()
+    urlparse.urlparse(hub.config['server_path'])
 
     req_path = env.get('PATH_INFO', "/")
 
     # replace server path
-    if hub.server_path:
-        req_path = req_path.replace(hub.server_path, "")
+    if hub.config['server_path']:
+        req_path = req_path.replace(hub.config['server_path'], "")
 
     if not req_path.startswith("/"):
         req_path = "/" + req_path

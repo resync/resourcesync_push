@@ -17,20 +17,6 @@ class Publisher(ResourceSyncPuSH):
         self._start_response = start_response
         self.get_config()
 
-    def make_link_header(self, hub_url=None, topic_url=None):
-        """
-        Constructs the resourcesync link header.
-        """
-
-        if not hub_url and not topic_url:
-            return self.respond(code=400,
-                                msg="hub and topic urls are not set \
-                                in config file.")
-        link_header = []
-        link_header.extend(["<", topic_url, ">;rel=", "self", ","])
-        link_header.extend([" <", hub_url, ">;rel=", "hub"])
-        return "".join(link_header)
-
     def handle_topic(self):
         """
         Responds to head or get requests to the topic url with
@@ -39,12 +25,41 @@ class Publisher(ResourceSyncPuSH):
         if not self._env.get('REQUEST_METHOD', None) in ['HEAD', 'GET']:
             return self.respond(code=403, msg='Method Not Allowed.')
 
-        link_header = self.make_link_header(topic_url=self.topic_url,
-                                            hub_url=self.hub_url)
+        link_header = self.make_link_header(topic_url=self.config['topic_url'],
+                                            hub_url=self.config['hub_url'])
         headers = []
         headers.append(('Link', link_header))
 
         return self.respond(code=204, headers=headers)
+
+    def create_change_notification(self, lastmod=None, loc=None, md={}):
+        """
+        Creates the change notification payload.
+        """
+
+        notification_template = """
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+ xmlns:rs="http://www.openarchives.org/rs/terms/">
+{url}
+</urlset>
+        """
+
+        notificaiton = []
+        notificaiton.append("<url>")
+        notificaiton.extend(["<loc>", loc, "</loc>"])
+        notificaiton.extend(["<lastmod>", lastmod, "</lastmod>"])
+        notificaiton.extend(['<rs:md change="', md['change'], '" '])
+        if md['change'] != "deleted":
+            notificaiton.extend(['hash="md5:', md['hash'], '" ',
+                                 'length="', md['length'], '" ',
+                                 'type="', md['type'], '" '])
+        else:
+            md['hash'] = None
+        notificaiton.append(" />")
+        notificaiton.append("</url>")
+
+        return notification_template.format(url="".join(notificaiton))
 
     def handle(self):
         """
@@ -64,34 +79,59 @@ class Publisher(ResourceSyncPuSH):
                                 msg="Invalid Content-Type value in header.")
 
         # only supports resourcesync
-        if not content_type == "application/xml":
+        if content_type == "application/xml":
+            self.process_resourcesync_payload()
+            """
+            elif content_type == "application/x-www-form-urlencoded":
+                query_st = self._env['wsgi.input'].read().strip()
+                query = urlparse.parse_qs(query_st)
+
+                topic_url = query.get('topic_url', [None])[0]
+                change = query.get("change", [None])[0]
+                resource_url = query.get("resource_url", [None])[0]
+
+                link_header = self.make_link_header(
+                topic_url=topic_url,
+                hub_url=self.config['hub_url'])
+                payload = self.create_change_notification()
+                self.process_resourcesync_payload()
+            """
+        else:
             return self.respond(code=406,
                                 msg="content-type header not recognised.")
 
-        payload = None
-        try:
-            payload = self._env['wsgi.input'].read().strip()
-        except Exception:
-            #return self.respond(code=400,
-            #                    msg="Payload of size > 0 expected.")
-            pass
+        return
 
-        if not self.hub_url or not self.topic_url or not payload:
+    def process_resourcesync_payload(self):
+        """
+        Sends the resourcesync payload to the hub. The topic and hub url must
+        already be configured in the config file.
+        """
+
+        payload = self._env['wsgi.input'].read().strip()
+
+        if not self.config['hub_url'] and \
+                not self.config['topic_url'] and\
+                not payload:
             return self.respond(code=400,
                                 msg="hub url, topic url and payload \
                                 is required.")
 
-        link_header = self.make_link_header(topic_url=self.topic_url,
-                                            hub_url=self.hub_url)
+        link_header = self.make_link_header(topic_url=self.config['topic_url'],
+                                            hub_url=self.config['hub_url'])
+
+        self.log_msg['payload'] = payload
+        self.log_msg['link_header'] = link_header
 
         headers = {}
-        headers['Content-Type'] = content_type
+        headers['Content-Type'] = "application/xml"
         headers['Link'] = link_header
         headers['Content-Length'] = str(len(payload))
 
-        self.send(url=self.hub_url,
+        self.send(url=self.config['hub_url'],
                   headers=headers,
                   data=payload)
+        self.log()
         return self.respond()
 
 
@@ -102,14 +142,14 @@ def application(env, start_response):
 
     publisher = Publisher(env, start_response)
 
-    urlparts = urlparse.urlparse(publisher.topic_url)
-    topic_path = urlparts.path.replace(publisher.server_path, "")
+    urlparts = urlparse.urlparse(publisher.config['topic_url'])
+    topic_path = urlparts.path.replace(publisher.config['server_path'], "")
 
     req_path = env.get('PATH_INFO', "/")
 
     # server path
-    if publisher.server_path:
-        req_path = req_path.replace(publisher.server_path, "")
+    if publisher.config['server_path']:
+        req_path = req_path.replace(publisher.config['server_path'], "")
 
     if not req_path.startswith("/"):
         req_path = "/" + req_path

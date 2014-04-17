@@ -54,7 +54,7 @@ class TestPublisher(unittest.TestCase):
 
         resourcesync_push = ResourceSyncPuSH()
         resourcesync_push.get_config(classname='publisher')
-        app.get(resourcesync_push.topic_url, status=204)
+        app.get(resourcesync_push.config['topic_url'], status=204)
 
 
 def suite():

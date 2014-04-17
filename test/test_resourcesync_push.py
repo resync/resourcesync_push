@@ -10,17 +10,17 @@ class TestResourceSyncPuSH(unittest.TestCase):
         print("Reading hub config")
         resourcesync_push = ResourceSyncPuSH()
         resourcesync_push.get_config(classname='hub')
-        assert resourcesync_push.my_url is not None
+        assert resourcesync_push.config['my_url'] is not None
 
         print("Reading publisher config")
         resourcesync_push = ResourceSyncPuSH()
         resourcesync_push.get_config(classname='publisher')
-        assert resourcesync_push.my_url is not None
+        assert resourcesync_push.config['my_url'] is not None
 
         print("Reading subscriber config")
         resourcesync_push = ResourceSyncPuSH()
         resourcesync_push.get_config(classname='subscriber')
-        assert resourcesync_push.my_url is not None
+        assert resourcesync_push.config['my_url'] is not None
 
     def test_send_get(self):
         f = resourcesync_push.send("http://httpbin.org/get", method='GET')

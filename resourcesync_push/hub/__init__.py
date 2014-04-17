@@ -1,0 +1,1 @@
+"""The ResourceSync Hub package"""

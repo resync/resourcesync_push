@@ -10,6 +10,7 @@ from requests.adapters import HTTPAdapter
 import ConfigParser
 from ConfigParser import NoOptionError, NoSectionError
 import os
+import json
 
 
 HTTP_STATUS_CODE = {
@@ -43,15 +44,25 @@ class ResourceSyncPuSH(object):
         self.session = FuturesSession(max_workers=10)
         adapter = HTTPAdapter(max_retries=3)
         self.session.mount("http://", adapter)
-        self.log_mode = ""
-        self.mimetypes = []
-        self.trusted_publishers = []
-        self.trusted_topics = []
-        self.my_url = ""
-        self.hub_url = ""
-        self.topic_url = ""
-        self.subscribers_file = ""
-        self.server_path = ""
+
+        # config parameters
+        self.config = {}
+        self.config['log_mode'] = ""
+        self.config['mimetypes'] = []
+        self.config['trusted_publishers'] = []
+        self.config['trusted_topics'] = []
+        self.config['my_url'] = ""
+        self.config['hub_url'] = ""
+        self.config['topic_url'] = ""
+        self.config['subscribers_file'] = ""
+        self.config['server_path'] = ""
+
+        # logging messages
+        self.log_msg = {}
+        self.log_msg['payload'] = ""
+        self.log_msg['msg'] = []
+        self.log_msg['resource_url'] = ""
+        self.log_msg['link_header'] = ""
 
     def get_config(self, classname=None):
         """
@@ -69,8 +80,9 @@ class ResourceSyncPuSH(object):
         cnf_file = []
         cnf_file.extend([
             os.path.join(os.path.dirname(__file__),
-                         "../conf/resourcesync_push.cnf"),
-            "/etc/resourcesync_push.cnf"
+                         "../conf/resourcesync_push.ini"),
+            "/etc/resourcesync_push.ini",
+            "/etc/resourcesync_push/resourcesync_push.ini",
         ])
 
         # loading values from configuration file
@@ -84,18 +96,42 @@ class ResourceSyncPuSH(object):
         elif classname == "publisher":
             self.get_publisher_config(conf)
         elif classname == "subscriber":
-            self.my_url = ""
             try:
-                self.my_url = conf.get("subscriber", "url")
+                self.config['my_url'] = conf.get("subscriber", "url")
             except (NoSectionError, NoOptionError):
                 print("The url value for subscriber is required \
                       in the config file.")
                 raise
 
+        self.get_demo_config(conf)
+
+    def get_demo_config(self, conf):
+        """
+        Reads the [demo_hub] section from the config file if the
+        log mode is set to 'demo'.
+        """
         try:
-            self.log_mode = conf.get("general", "log_mode")
+            self.config['log_mode'] = conf.get("general", "log_mode")
         except (NoSectionError, NoOptionError):
             pass
+
+        if not self.config['log_mode'] == "mode":
+            return
+
+        try:
+            self.config['demo_hub_url'] = conf.get("demo_mode", "hub_url")
+        except (NoSectionError, NoOptionError):
+            print("Demo log mode requires a hub_url in the \
+                  [demo_mode] section")
+            raise
+
+        try:
+            self.config['demo_topic_url'] = conf.get("demo_mode", "topic_url")
+        except (NoSectionError, NoOptionError):
+            print("Demo log mode requires a topic_url in the \
+                  [demo_mode] section")
+            raise
+        return
 
     def get_hub_config(self, conf):
         """
@@ -103,38 +139,42 @@ class ResourceSyncPuSH(object):
         """
 
         try:
-            self.mimetypes = conf.get("hub", "mimetypes")
+            self.config['mimetypes'] = conf.get("hub", "mimetypes")
         except (NoSectionError, NoOptionError):
             # reourcesync hub by default
-            self.mimetypes = "application/xml"
+            self.config['mimetypes'] = "application/xml"
 
         try:
-            self.trusted_publishers = conf.get("hub", "trusted_publishers")
+            self.config['trusted_publishers'] = conf.get("hub",
+                                                         "trusted_publishers")
         except (NoSectionError, NoOptionError):
             # will allow any publisher
-            self.trusted_publishers = []
+            self.config['trusted_publishers'] = []
 
         try:
-            self.trusted_topics = conf.get("hub", "trusted_topics")
+            self.config['trusted_topics'] = conf.get("hub", "trusted_topics")
         except (NoSectionError, NoOptionError):
             # will accept any topic
-            self.trusted_topics = []
+            self.config['trusted_topics'] = []
 
         try:
-            self.my_url = conf.get("hub", "url")
+            self.config['my_url'] = conf.get("hub", "url")
         except (NoSectionError, NoOptionError):
             print("The url value for hub is required in the config file.")
             raise
 
-        self.subscribers_file = os.path.join(os.path.dirname(__file__),
-                                             "../db/subscriptions.pk")
+        self.config['subscribers_file'] = os.path.join(
+            os.path.dirname(__file__),
+            "../db/subscriptions.pk"
+        )
         try:
-            self.subscribers_file = conf.get("hub", "subscribers_file")
+            self.config['subscribers_file'] = conf.get("hub",
+                                                       "subscribers_file")
         except (NoSectionError, NoOptionError):
             pass
 
-        if not os.path.isfile(self.subscribers_file):
-            open(self.subscribers_file, 'a').close()
+        if not os.path.isfile(self.config['subscribers_file']):
+            open(self.config['subscribers_file'], 'a').close()
 
         return
 
@@ -144,26 +184,26 @@ class ResourceSyncPuSH(object):
         """
 
         try:
-            self.my_url = conf.get("publisher", "url")
+            self.config['my_url'] = conf.get("publisher", "url")
         except (NoSectionError, NoOptionError):
             print("The url value for publisher is required \
                   in the config file.")
             raise
 
         try:
-            self.server_path = conf.get("publisher", "server_path")
+            self.config['server_path'] = conf.get("publisher", "server_path")
         except (NoSectionError, NoOptionError):
             pass
 
         try:
-            self.hub_url = conf.get("publisher", "hub_url")
+            self.config['hub_url'] = conf.get("publisher", "hub_url")
         except (NoSectionError, NoOptionError):
             print("The hub_url value for publisher is required \
                   in the config file.")
             raise
 
         try:
-            self.topic_url = conf.get("publisher", "topic_url")
+            self.config['topic_url'] = conf.get("publisher", "topic_url")
         except (NoSectionError, NoOptionError):
             print("The topic_url value for publisher is required \
                   in the config file.")
@@ -223,3 +263,33 @@ class ResourceSyncPuSH(object):
             elif link.get('rel') == 'hub':
                 hub_url = link.get('url')
         return (topic, hub_url)
+
+    def make_link_header(self, hub_url=None, topic_url=None):
+        """
+        Constructs the resourcesync link header.
+        """
+
+        if not hub_url and not topic_url:
+            return self.respond(code=400,
+                                msg="hub and topic urls are not set \
+                                in config file.")
+        link_header = []
+        link_header.extend(["<", topic_url, ">;rel=", "self", ","])
+        link_header.extend([" <", hub_url, ">;rel=", "hub"])
+        return "".join(link_header)
+
+    def log(self):
+        """
+        Log handler. Will send the log info as json to the
+        demo hub if log_mode value is set to demo in the config file.
+        """
+        if self.config['log_mode'] == 'demo':
+            headers = {}
+            headers['Link'] = self.make_link_header(
+                hub_url=self.config['demo_hub_url'],
+                topic_url=self.config['demo_topic_url']
+            )
+            self.send(self.config['demo_hub_url'],
+                      data=json.dumps(self.log_msg),
+                      headers=headers)
+        pass

@@ -1,0 +1,1 @@
+"""The ResourceSync Publisher package"""

@@ -24,17 +24,15 @@ class Subscriber(ResourceSyncPuSH):
         hub.
         """
 
-        payload = None
-        try:
-            payload = self._env['wsgi.input'].read()
-        except Exception:
+        payload = self._env['wsgi.input'].read()
+        if not payload:
             return self.respond(code=400,
                                 msg="Payload of size > 0 expected.")
         args = urlparse.parse_qs(payload)
         data = {}
         hub_url = args.get('hub_url')[0]
         data['hub.topic'] = args.get('topic_url')[0]
-        data['hub.callback'] = self.my_url
+        data['hub.callback'] = self.config['my_url']
         data['hub.mode'] = 'subscribe'
         data['hub.verify'] = 'sync'
 
@@ -63,12 +61,14 @@ class Subscriber(ResourceSyncPuSH):
             return self.respond(code=403,
                                 msg="content-type header not recognised.")
 
-        payload = None
-        try:
-            payload = self._env['wsgi.input'].read()
-        except Exception:
+        payload = self._env['wsgi.input'].read()
+        if not payload:
             return self.respond(code=400,
                                 msg="Payload of size > 0 expected.")
+
+        self.log_msg['payload'] = payload
+        self.log_msg['link_header'] = self._env.get('HTTP_LINK', None)
+        self.log()
 
         print(payload)
         return self.respond()
@@ -114,13 +114,13 @@ def application(env, start_response):
     """
 
     subscriber = Subscriber(env, start_response)
-    urlparse.urlparse(subscriber.server_path)
+    urlparse.urlparse(subscriber.config['server_path'])
 
     req_path = env.get('PATH_INFO', "/")
 
     # replace server path
-    if subscriber.server_path:
-        req_path = req_path.replace(subscriber.server_path, "")
+    if subscriber.config['server_path']:
+        req_path = req_path.replace(subscriber.config['server_path'], "")
 
     if not req_path.startswith("/"):
         req_path = "/" + req_path
