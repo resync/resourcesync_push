@@ -1,5 +1,5 @@
 # ResourceSync PuSH
-![alt text](https://github.com/hariharshankar/resourcesync_push/blob/master/doc/resourcesync_logo.jpg?raw=true ResourceSync)
+![alt text](https://github.com/hariharshankar/resourcesync_push/blob/master/resourcesync_logo.jpg?raw=true ResourceSync)
 
 **A ResourceSync PubSubHubbub Implementation.**
 
