@@ -17,6 +17,7 @@ class Subscriber(ResourceSyncPuSH):
         ResourceSyncPuSH.__init__(self)
         self._env = env
         self._start_response = start_response
+        self.get_config()
 
     def process_subscription(self):
         """
@@ -30,8 +31,8 @@ class Subscriber(ResourceSyncPuSH):
                                 msg="Payload of size > 0 expected.")
         args = urlparse.parse_qs(payload)
         data = {}
-        hub_url = args.get('hub_url')[0]
-        data['hub.topic'] = args.get('topic_url')[0]
+        hub_url = args.get('hub_url', [None])[0]
+        data['hub.topic'] = args.get('topic_url', [None])[0]
         data['hub.callback'] = self.config['my_url']
         data['hub.mode'] = 'subscribe'
         data['hub.verify'] = 'sync'
@@ -70,7 +71,6 @@ class Subscriber(ResourceSyncPuSH):
         self.log_msg['link_header'] = self._env.get('HTTP_LINK', None)
         self.log()
 
-        print(payload)
         return self.respond()
 
     def process_subscription_challenge(self):
@@ -78,8 +78,8 @@ class Subscriber(ResourceSyncPuSH):
         Responds to the subscription challenge from the hub.
         """
 
-        args = urlparse.parse_qs(self._env.get('QUERY_STRING'))
-        challenge = args.get('hub.challenge')[0]
+        args = urlparse.parse_qs(self._env.get('QUERY_STRING', None))
+        challenge = args.get('hub.challenge', [None])[0]
         if not challenge:
             return self.respond(code=400, msg="Bad Request.")
         return self.respond(code=200, msg=challenge)

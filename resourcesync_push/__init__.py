@@ -115,7 +115,7 @@ class ResourceSyncPuSH(object):
         except (NoSectionError, NoOptionError):
             pass
 
-        if not self.config['log_mode'] == "mode":
+        if not self.config['log_mode'] == "demo":
             return
 
         try:
@@ -292,4 +292,5 @@ class ResourceSyncPuSH(object):
             self.send(self.config['demo_hub_url'],
                       data=json.dumps(self.log_msg),
                       headers=headers)
-        pass
+        else:
+            print(self.log_msg)

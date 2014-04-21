@@ -80,7 +80,7 @@ class Publisher(ResourceSyncPuSH):
 
         # only supports resourcesync
         if content_type == "application/xml":
-            self.process_resourcesync_payload()
+            return self.process_resourcesync_payload()
             """
             elif content_type == "application/x-www-form-urlencoded":
                 query_st = self._env['wsgi.input'].read().strip()
@@ -110,8 +110,8 @@ class Publisher(ResourceSyncPuSH):
 
         payload = self._env['wsgi.input'].read().strip()
 
-        if not self.config['hub_url'] and \
-                not self.config['topic_url'] and\
+        if not self.config['hub_url'] or\
+                not self.config['topic_url'] or\
                 not payload:
             return self.respond(code=400,
                                 msg="hub url, topic url and payload \

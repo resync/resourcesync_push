@@ -44,6 +44,26 @@ class TestResourceSyncPuSH(unittest.TestCase):
         assert t == "http://example.com/dataset1/change/"
         assert h == "http://hub.example.org/pubsubhubbub/"
 
+    def test_make_link_header(self):
+        lh = resourcesync_push.make_link_header(hub_url="http://hub",
+                                                topic_url="http://topic")
+        lk = '<http://topic>;rel=self, <http://hub>;rel=hub'
+        assert lh == lk
+
+    def test_hub_config(self):
+        resourcesync_push.get_config("hub")
+        assert resourcesync_push.config.get('my_url') is not None
+
+    def test_publisher_config(self):
+        resourcesync_push.get_config("publisher")
+        assert resourcesync_push.config.get('my_url') is not None
+        assert resourcesync_push.config.get('topic_url') is not None
+        assert resourcesync_push.config.get('hub_url') is not None
+
+    def test_subscriber_config(self):
+        resourcesync_push.get_config("subscriber")
+        assert resourcesync_push.config.get('my_url') is not None
+
 
 def suite():
     suite = unittest.TestSuite()
