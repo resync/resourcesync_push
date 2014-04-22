@@ -11,7 +11,8 @@ The [ResourceSync specification](http://www.openarchives.org/rs/0.9.1/resourcesy
 * Scalable, fast and easily installable Publisher, Hub and Subscriber.
 * Fully compliant implementation of the ResourceSync Change Notification spec.
 * The Hub is also compliant with the PubSubHubbub spec and can be used as a simple pubsub hub.
-* ResourceSync Push can be used in any existing system and is programming language independent; uses HTTP POST throughout.
+* ResourceSync Push can be easily deployed into any existing system and is programming language independent.
+  * Sends and receives data using REST APIs.
 
 
 ## Getting Started
