@@ -263,15 +263,11 @@ class HubSubscriber(Hub):
         """
 
         challenge = self.base_n(abs(hash(time.time())), 36)
-        verify_token = to_verify.get('verify_token', None)
         payload = {
             'hub.mode': to_verify['mode'],
             'hub.topic': to_verify['topic'],
             'hub.challenge': challenge
         }
-
-        if verify_token:
-            payload['hub.verify_token'] = verify_token
 
         url = '?'.join([to_verify['callback'], urllib.urlencode(payload)])
 
@@ -318,7 +314,6 @@ class HubSubscriber(Hub):
         callback = args.get('hub.callback', [None])[0]
         topic = args.get('hub.topic', [None])[0]
         verify = args.get('hub.verify', [None])
-        verify_token = args.get('hub.verify_token', [None])[0]
         lease = args.get('hub.lease_seconds', [2678400])[0]
 
         if not mode and not callback and not topic and not verify:
@@ -337,7 +332,6 @@ class HubSubscriber(Hub):
         to_verify = {'mode': mode,
                      'callback': callback,
                      'topic': topic,
-                     'verify_token': verify_token,
                      'lease': lease}
         # async
         # FIXME: implement sync
