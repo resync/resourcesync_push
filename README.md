@@ -1,7 +1,7 @@
 # ResourceSync PuSH
 ![alt text](https://github.com/hariharshankar/resourcesync_push/blob/master/resourcesync_logo.jpg?raw=true ResourceSync)
 
-**A ResourceSync PubSubHubbub Implementation.**
+**A ResourceSync PubSubHubbub (PuSH) Implementation.**
 
 ResourceSync PuSH is a PubsubHubbub implementation that also supports the ResourceSync change notification framework. This software provides Publisher, Hub and Subscriber modules with a RESTful API for easy integration in to existing systems. ResourceSync PuSH is written in Python and uses the [uWSGI](http://projects.unbit.it/uwsgi/) server. Please refer to the [ResouceSync Notification spec](http://www.openarchives.org/rs/notification/0.9/notification) for motivating examples and a complete overview of the framework architecture. 
 
