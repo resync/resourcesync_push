@@ -5,13 +5,17 @@ except ImportError:
 
 
 setup(name='resourcesync_push',
-      version='0.3.0',
-      author='Harihar Shankar, Martin Klien, Herbert Van de Sompel',
+      version='0.5.0',
+      author='Harihar Shankar, Martin Klein, Herbert Van de Sompel',
       author_email="hariharshankar@gmail.com",
-      url="http://resourcesync.org",
-      download_url="",
+      url="http://www.openarchives.org/rs/0.9.1/resourcesync",
+      download_url=
+      "https://github.com/hariharshankar/resourcesync_push/releases",
       description="A ResourceSync PubSubHubhub implementation.",
-      long_description="",
+      long_description="ResourceSync PuSH is a PubsubHubbub implementation\
+      that also supports the ResourceSync change notification framework. \
+      This software provides Publisher, Hub and Subscriber modules with a \
+      RESTful API for easy integration in to existing systems.",
       packages=[
           'resourcesync_push',
           'resourcesync_push.hub',
