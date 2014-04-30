@@ -122,6 +122,8 @@ class Publisher(ResourceSyncPuSH):
 
         self.log_msg['payload'] = payload
         self.log_msg['link_header'] = link_header
+        self.log_msg['msg'].append("Payload size: %s bytes." %
+                                   str(len(payload)))
 
         headers = {}
         headers['Content-Type'] = "application/xml"

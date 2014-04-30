@@ -61,8 +61,8 @@ class ResourceSyncPuSH(object):
         self.log_msg = {}
         self.log_msg['payload'] = ""
         self.log_msg['msg'] = []
-        self.log_msg['resource_url'] = ""
         self.log_msg['link_header'] = ""
+        self.log_msg['module'] = ""
 
     def get_config(self, classname=None):
         """
@@ -73,6 +73,8 @@ class ResourceSyncPuSH(object):
 
         if not classname:
             classname = self.__class__.__name__.lower()
+
+        self.log_msg['module'] = classname
 
         # NOTE: more paths can be added to look for the config files.
         # order of files matter, the config in the first file

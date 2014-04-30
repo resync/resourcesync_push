@@ -180,11 +180,12 @@ class HubPublisher(Hub):
             'Content-Length': str(len(payload))
         }
 
-        self.log_msg['msg'].append("Posting change notification to %s \
-                                   subscriber(s)" % len(subscribers))
-        self.log_msg['msg'].append("ResourceSync Payload size: %s" %
+        self.log_msg['msg'].append("""Posting change notification to %s \
+subscriber(s)""" % len(subscribers))
+        self.log_msg['msg'].append("Payload size: %s bytes." %
                                    str(len(payload)))
         self.log_msg['link_header'] = link_header
+        self.log_msg['payload'] = payload
 
         self.log()
 

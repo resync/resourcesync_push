@@ -69,6 +69,8 @@ class Subscriber(ResourceSyncPuSH):
 
         self.log_msg['payload'] = payload
         self.log_msg['link_header'] = self._env.get('HTTP_LINK', None)
+        self.log_msg['msg'].append("Payload size: %s bytes." %
+                                   str(len(payload)))
         self.log()
 
         return self.respond()
