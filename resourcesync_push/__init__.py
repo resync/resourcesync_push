@@ -226,6 +226,9 @@ class ResourceSyncPuSH(object):
         elif method == 'GET':
             return self.session.get(url,
                                     headers=headers)
+        elif method == 'HEAD':
+            return self.session.head(url,
+                                     headers=headers)
         else:
             return
 
