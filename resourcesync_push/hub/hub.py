@@ -47,7 +47,7 @@ class Hub(ResourceSyncPuSH):
             # file gets created if there is none.
             sub_file = open(filename, "r+b")
             data = cPickle.load(sub_file)
-        except IOError as err:
+        except (IOError, EOFError) as err:
             print(err)
         finally:
             if sub_file:
