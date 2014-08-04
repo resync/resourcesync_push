@@ -32,7 +32,7 @@ class Publisher(ResourceSyncPuSH):
 
         return self.respond(code=204, headers=headers)
 
-    def create_change_notification(self, lastmod=None, loc=None, md={}):
+    def create_change_notification(self, lastmod=None, loc=None, md=None):
         """
         Creates the change notification payload.
         """
@@ -44,6 +44,9 @@ class Publisher(ResourceSyncPuSH):
 {url}
 </urlset>
         """
+
+        if not md and not lastmod and not loc:
+            return None
 
         notificaiton = []
         notificaiton.append("<url>")

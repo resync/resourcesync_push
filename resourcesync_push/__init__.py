@@ -44,6 +44,7 @@ class ResourceSyncPuSH(object):
         self.session = FuturesSession(max_workers=10)
         adapter = HTTPAdapter(max_retries=3)
         self.session.mount("http://", adapter)
+        self._start_response = None
 
         # config parameters
         self.config = {}

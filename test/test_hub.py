@@ -82,7 +82,7 @@ class TestHubSubscriber(unittest.TestCase):
             hub.topic=http://localhost/test&hub.callback=http://localhost"
         app.post("/subscribe",
                  content_type="application/x-www-form-urlencoded",
-                 params=data, status=204)
+                 params=data, status=409)
 
 
 class TestHubRegister(unittest.TestCase):

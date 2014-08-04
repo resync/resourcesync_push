@@ -31,9 +31,11 @@ class Hub(ResourceSyncPuSH):
             cPickle.dump(subscriptions, sub_file)
         except IOError as err:
             print(err)
+            return None
         finally:
             if sub_file:
                 sub_file.close()
+        return True
 
     def read_subscriptions(self):
         "Read subscriber's list from file"
@@ -253,8 +255,7 @@ class HubSubscriber(Hub):
             if subscriber_url in subscriptions[topic]:
                 del subscriptions[topic][subscriber_url]
 
-        self.save_subscriptions(subscriptions)
-        return
+        return self.save_subscriptions(subscriptions)
 
     def subscribe(self, to_verify):
         """
@@ -272,6 +273,7 @@ class HubSubscriber(Hub):
 
         url = '?'.join([to_verify['callback'], urllib.urlencode(payload)])
 
+        subscriber_saved = False
         try:
             future = self.send(url, method='GET')
             response = future.result()
@@ -279,12 +281,12 @@ class HubSubscriber(Hub):
 
             if challenge in payload:
                 if to_verify['mode'] == 'subscribe':
-                    self.update_subscriber(to_verify['topic'],
+                    subscriber_saved = self.update_subscriber(to_verify['topic'],
                                            to_verify['callback'],
                                            to_verify['lease'],
                                            mode="subscribe")
                 else:
-                    self.update_subscriber(to_verify['topic'],
+                    subscriber_saved = self.update_subscriber(to_verify['topic'],
                                            to_verify['callback'],
                                            to_verify['lease'],
                                            mode="unsubscribe")
@@ -296,8 +298,12 @@ class HubSubscriber(Hub):
             return self.respond(code=409,
                                 msg="Subscription verification failed")
 
-        # success
-        return self.respond(code=204, msg="Subscription successful.")
+        if subscriber_saved:
+            # success
+            return self.respond(code=204, msg="Subscription successful.")
+        else:
+            # error trying to save subscriber.. file permission issue?
+            return self.respond(code=500, msg="Error saving subscriber to file.")
 
     def handle(self):
         """
