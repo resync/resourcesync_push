@@ -51,6 +51,7 @@ class Hub(ResourceSyncPuSH):
             data = cPickle.load(sub_file)
         except (IOError, EOFError) as err:
             print(err)
+            return None
         finally:
             if sub_file:
                 sub_file.close()
@@ -132,6 +133,8 @@ class HubPublisher(Hub):
         """
 
         subscriptions = self.read_subscriptions()
+        if not subscriptions:
+            return self.respond(code=500, msg="Error reading subscriptions.")
         subscribers = subscriptions.get(self.push_url, None)
         if not subscribers:
             return self.respond(code=204, msg="")
@@ -172,6 +175,8 @@ class HubPublisher(Hub):
                                 msg="Topic is not registered with the hub.")
 
         subscriptions = self.read_subscriptions()
+        if not subscriptions:
+            return self.respond(code=500, msg="Error reading subscriptions.")
         subscribers = subscriptions.get(topic, None)
         if not subscribers:
             return self.respond(code=204)
